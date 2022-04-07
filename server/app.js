@@ -6,17 +6,58 @@ ws(app);
 
 let num = 0;
 
-app.ws("/connect", (ws, _) => {
-  const wsid = num++;
+function messageType(message) {
+  let keys = Object.keys(message);
+  if (1 === keys.length) {
+    return keys[0];
+  }
+  return "";
+}
 
-  ws.on("message", (msg) => {
-    console.log(String(msg), wsid);
-    ws.send(`pong ${wsid}`);
-  });
-  ws.on("close", () => {
-    console.log("close", wsid);
-  });
-  console.log("socket", wsid);
+function Connected(clientID) {
+  return  { connected: { clientID: clientID } };
+}
+
+class Socket {
+  constructor(ws, clientID) {
+    this.ws = ws;
+    this.clientID = clientID;
+
+    ws.on("message", (msg) => { this.onMessage(msg) });
+    ws.on("close", () => { });
+
+    console.log(`client ${clientID} connected`);
+
+    this.send(Connected(clientID));
+  }
+
+  onMessage(message)  {
+    let envelope = JSON.parse(message);
+    let type = messageType(envelope);
+    console.log(`received ${type} message from ${this.clientID}`);
+    switch (type) {
+      case "ping":
+        this.send({ pong: {} });
+        break;
+      default:
+        console.log("unrecognized message", envelope);
+    }
+  }
+
+  onClose() {
+    console.log("close", this.clientID);
+    // TODO: Check that this actually allows the object to be collected.
+    this.ws = null;
+  }
+
+  send(message) {
+    const buffer = Buffer.from(JSON.stringify(message), "utf-8");
+    this.ws.send(buffer);
+  }
+}
+
+app.ws("/connect", (ws, _) => {
+  new Socket(ws, num++);
 });
 
 app.listen(3000);

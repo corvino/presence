@@ -1,5 +1,11 @@
 import Foundation
 
+enum Message: Codable {
+    case connected(clientID: Int)
+    case ping
+    case pong
+}
+
 class PresenceClient: ObservableObject {
     enum State {
         case invalid(reason: String)
@@ -10,6 +16,9 @@ class PresenceClient: ObservableObject {
 
     private let session = URLSession(configuration: .default)
     var ok = true
+
+    private let decoder = JSONDecoder()
+    private let encoder = JSONEncoder()
 
     init() {
         let urlString = "ws://localhost:3000/connect"
@@ -55,10 +64,25 @@ class PresenceClient: ObservableObject {
     }
 
     private func receive(data: Data) {
-        print(String(decoding: data, as: UTF8.self))
+        let decoder = JSONDecoder()
+
+        do {
+            let message = try decoder.decode(Message.self, from: data)
+
+            switch message {
+            case .connected(clientID: let clientID):
+                print("connected", clientID)
+            case .pong:
+                print("pong")
+            default:
+                break
+            }
+        } catch {
+            print("Error processing message:", error)
+        }
     }
 
-    private func sendData(_ data: Data) {
+    private func send(data: Data) {
         switch state {
         case .invalid:
             print("not connected")
@@ -71,8 +95,12 @@ class PresenceClient: ObservableObject {
         }
     }
 
+    private func send<T>(message: T) where T: Codable {
+        guard let data = try? JSONEncoder().encode(message) else { return }
+        send(data: data)
+    }
+
     func ping() {
-        guard let data = "ping".data(using: .utf8) else { return }
-        sendData(data)
+        send(message: Message.ping)
     }
 }
