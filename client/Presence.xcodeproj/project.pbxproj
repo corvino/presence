@@ -11,6 +11,7 @@
 		2763131B27FD08E900CE26CD /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2763131A27FD08E900CE26CD /* ContentView.swift */; };
 		2763131D27FD08EB00CE26CD /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 2763131C27FD08EB00CE26CD /* Assets.xcassets */; };
 		2763132027FD08EB00CE26CD /* Preview Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 2763131F27FD08EB00CE26CD /* Preview Assets.xcassets */; };
+		2763132827FEAA0B00CE26CD /* PresenceClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2763132727FEAA0B00CE26CD /* PresenceClient.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -20,6 +21,7 @@
 		2763131C27FD08EB00CE26CD /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		2763131F27FD08EB00CE26CD /* Preview Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = "Preview Assets.xcassets"; sourceTree = "<group>"; };
 		2763132127FD08EB00CE26CD /* Presence.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Presence.entitlements; sourceTree = "<group>"; };
+		2763132727FEAA0B00CE26CD /* PresenceClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PresenceClient.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -53,6 +55,7 @@
 			isa = PBXGroup;
 			children = (
 				2763131827FD08E900CE26CD /* PresenceApp.swift */,
+				2763132727FEAA0B00CE26CD /* PresenceClient.swift */,
 				2763131A27FD08E900CE26CD /* ContentView.swift */,
 				2763131C27FD08EB00CE26CD /* Assets.xcassets */,
 				2763132127FD08EB00CE26CD /* Presence.entitlements */,
@@ -140,6 +143,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				2763131B27FD08E900CE26CD /* ContentView.swift in Sources */,
+				2763132827FEAA0B00CE26CD /* PresenceClient.swift in Sources */,
 				2763131927FD08E900CE26CD /* PresenceApp.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

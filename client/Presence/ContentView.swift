@@ -1,9 +1,18 @@
 import SwiftUI
 
 struct ContentView: View {
+    @StateObject var client = PresenceClient()
+
     var body: some View {
-        Text("Hello, world!")
-            .padding()
+        VStack {
+            Text("Hello, world!")
+            Button {
+                client.ping()
+            } label: {
+                Text("Ping")
+            }
+        }
+        .padding()
     }
 }
 
