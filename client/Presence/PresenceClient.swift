@@ -2,17 +2,57 @@ import Foundation
 
 enum Message: Codable {
     case connected(clientID: Int)
+    case createUser
+    case userCreated(name: String)
+    case login(name: String)
+    case loggedIn(name: String)
+    case changeName(name: String)
+    case nameChanged(name: String)
     case ping
     case pong
 }
 
-class PresenceClient: ObservableObject {
-    enum State {
-        case invalid(reason: String)
-        case connected(socket: URLSessionWebSocketTask)
+enum ClientError: Error {
+    case alreadyConnected
+    case disconnected
+}
+
+class WebSocketConnectCallback: NSObject, URLSessionTaskDelegate, URLSessionWebSocketDelegate {
+    private weak var delegate: PresenceClient?
+
+    init(client: PresenceClient) {
+        self.delegate = client
     }
 
-    private var state: State
+    func urlSession(_ session: URLSession, webSocketTask: URLSessionWebSocketTask, didCloseWith closeCode: URLSessionWebSocketTask.CloseCode, reason: Data?) {
+        print("didCloseWith")
+    }
+
+    func urlSession(_ session: URLSession, webSocketTask: URLSessionWebSocketTask, didOpenWithProtocol protocol: String?) {
+        print("didOpenWithProtocol")
+        DispatchQueue.main.async { [weak self] in
+            self?.delegate?.state = .connected(socket: webSocketTask)
+            self?.delegate?.onConnect()
+        }
+    }
+
+    func urlSession(_ session: URLSession, task: URLSessionTask, didCompleteWithError error: Error?) {
+        print("completed with error: \(error as Error?)")
+        DispatchQueue.main.async { [weak self] in
+            self?.delegate?.state = .disconnected
+        }
+    }
+}
+
+class PresenceClient: ObservableObject {
+    enum State {
+        case connecting(socket: URLSessionWebSocketTask)
+        case connected(socket: URLSessionWebSocketTask)
+        case disconnected
+    }
+
+    @Published var state = State.disconnected
+    @Published var name: String? = nil
 
     private let session = URLSession(configuration: .default)
     var ok = true
@@ -20,34 +60,24 @@ class PresenceClient: ObservableObject {
     private let decoder = JSONDecoder()
     private let encoder = JSONEncoder()
 
-    init() {
-        let urlString = "ws://localhost:3000/connect"
-        guard let url = URL(string: urlString) else { state = .invalid(reason: "invalid URL"); return }
-
-        let socket = session.webSocketTask(with: url)
-
-        state = .connected(socket: socket)
-        let process = { [weak self] in
-            do {
-                while (true) {
-                    guard let self = self else { break }
-                    self.receive(message: try await socket.receive())
-                }
-            } catch {
-                // Do error/disconncted stuff here.
-                print(error)
+    private var socket: URLSessionWebSocketTask? {
+        get {
+            switch self.state {
+            case .connected(socket: let socket), .connecting(socket: let socket):
+                return socket
+            default:
+                return nil
             }
         }
-        Task.detached { await process() }
-        socket.resume()
     }
 
-    deinit{
+    deinit {
         switch state {
-        case .invalid:
-            print("not connected")
-        case let .connected(socket: socket):
+        case let .connected(socket: socket), let .connecting(socket: socket):
+            print("close socket")
             socket.cancel(with: .goingAway, reason: nil)
+        case .disconnected:
+            break
         }
     }
 
@@ -64,6 +94,7 @@ class PresenceClient: ObservableObject {
     }
 
     private func receive(data: Data) {
+        print("received")
         let decoder = JSONDecoder()
 
         do {
@@ -72,9 +103,17 @@ class PresenceClient: ObservableObject {
             switch message {
             case .connected(clientID: let clientID):
                 print("connected", clientID)
+            case .userCreated(let name):
+                print("created")
+                DispatchQueue.main.async { self.name = name }
+            case .loggedIn(let name):
+                self.name = name
+            case .nameChanged(let name):
+                self.name = name
             case .pong:
                 print("pong")
             default:
+                print("unknown message type")
                 break
             }
         } catch {
@@ -84,9 +123,9 @@ class PresenceClient: ObservableObject {
 
     private func send(data: Data) {
         switch state {
-        case .invalid:
+        case .disconnected, .connecting:
             print("not connected")
-            case let .connected(socket: socket):
+        case let .connected(socket: socket):
             socket.send(.data(data)) { (err) in
                 if nil != err {
                     print(err.debugDescription)
@@ -100,7 +139,63 @@ class PresenceClient: ObservableObject {
         send(data: data)
     }
 
+    func onConnect() {
+        if let name = name {
+            send(message: Message.login(name: name))
+        } else {
+            send(message: Message.createUser)
+        }
+    }
+
+    func connect(name: String? = nil) {
+        switch state {
+        case .connected, .connecting:
+            print("client already connected")
+        case .disconnected:
+            let urlString = "ws://localhost:3000/connect"
+            guard let url = URL(string: urlString) else { state = .disconnected; return }
+
+            let socket = session.webSocketTask(with: url)
+            socket.delegate = WebSocketConnectCallback(client: self)
+
+            state = .connecting(socket: socket)
+            let process = { [weak self] in
+                do {
+                    while (true) {
+                        // guard case .connected(let socket) = self?.state else { break }
+                        guard let socket = self?.socket else { return }
+
+                        // It is important to not create a retain cycle prior to the await.
+                        let message = try await socket.receive()
+                        self?.receive(message: message)
+
+                    }
+                } catch {
+                    print(error)
+                    guard let self = self else { return }
+                    DispatchQueue.main.async { self.state = .disconnected }
+                }
+            }
+            Task.detached { await process() }
+            socket.resume()
+        }
+    }
+
+    func disconnect() {
+        switch state {
+        case .connected(let socket), .connecting(let socket):
+            socket.cancel(with: .goingAway, reason: nil)
+            state = .disconnected
+        case .disconnected:
+            print("client already disconncted")
+        }
+    }
+
     func ping() {
         send(message: Message.ping)
+    }
+
+    func login(name: String) {
+        send(message: Message.login(name: name))
     }
 }

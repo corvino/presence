@@ -12,7 +12,8 @@ module.exports = {
     semi: ["error", "always", { "omitLastInOneLineBlock": true}],
     quotes: ["error", "double", { avoidEscape: true }],
     "comma-dangle": ["error", "never"],
-    "no-unused-vars": ["error", { "argsIgnorePattern": "^_$" }]
+    "no-unused-vars": ["error", { "argsIgnorePattern": "^_$" }],
+    "no-constant-condition": "never"
   },
   settings: {
     react: {
